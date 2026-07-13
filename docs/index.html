@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QA job pipeline</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0D1117;
+    --panel: #161B22;
+    --panel-hover: #1C2129;
+    --border: #30363D;
+    --text: #E6EDF3;
+    --text-dim: #8B949E;
+    --text-faint: #565D66;
+    --pass: #3FB950;
+    --pass-dim: #1B4721;
+    --warn: #D29922;
+    --warn-dim: #4D3B0F;
+    --fail: #F85149;
+    --fail-dim: #4C1614;
+    --applied: #58A6FF;
+    --applied-dim: #16324D;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', -apple-system, sans-serif;
+    line-height: 1.5;
+  }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 24px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0;
+    letter-spacing: 0.02em;
+  }
+  header .build-time {
+    font-size: 12px;
+    color: var(--text-faint);
+  }
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 1px;
+    background: var(--border);
+    border-bottom: 1px solid var(--border);
+  }
+  .stat {
+    background: var(--panel);
+    padding: 18px 20px;
+  }
+  .stat .value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 26px;
+    font-weight: 600;
+  }
+  .stat .label {
+    font-size: 12px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-top: 4px;
+  }
+  .stat.qualifying .value { color: var(--pass); }
+  .stat.applied .value { color: var(--applied); }
+  .controls {
+    padding: 16px 32px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .tabs { display: flex; gap: 6px; }
+  .tab {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .tab.active { color: var(--text); border-color: var(--text-dim); }
+  .spacer { flex: 1; }
+  select, input[type="search"] {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  input[type="search"] { min-width: 200px; }
+  main { padding: 20px 32px 60px; max-width: 980px; margin: 0 auto; }
+  .job {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+    margin-bottom: 10px;
+    display: flex;
+    gap: 16px;
+    align-items: flex-start;
+  }
+  .job:hover { background: var(--panel-hover); }
+  .badge {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    font-size: 13px;
+    border-radius: 6px;
+    padding: 6px 10px;
+    min-width: 48px;
+    text-align: center;
+    flex-shrink: 0;
+  }
+  .badge.pass { background: var(--pass-dim); color: var(--pass); }
+  .badge.warn { background: var(--warn-dim); color: var(--warn); }
+  .badge.fail { background: var(--fail-dim); color: var(--fail); }
+  .badge.unscored { background: var(--border); color: var(--text-faint); }
+  .job-body { flex: 1; min-width: 0; }
+  .job-title-row { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .job-title { font-size: 15px; font-weight: 500; }
+  .job-title a { color: var(--text); text-decoration: none; }
+  .job-title a:hover { color: var(--applied); text-decoration: underline; }
+  .job-meta {
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-top: 3px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .job-meta .source { color: var(--text-faint); }
+  .checks { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+  .check {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .check.matched { background: var(--pass-dim); color: var(--pass); }
+  .check.gap { background: var(--fail-dim); color: var(--fail); }
+  .reasoning {
+    margin-top: 8px;
+    font-size: 13px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+  .applied-pill {
+    font-size: 11px;
+    background: var(--applied-dim);
+    color: var(--applied);
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-family: 'IBM Plex Mono', monospace;
+    align-self: flex-start;
+    flex-shrink: 0;
+  }
+  .empty {
+    text-align: center;
+    color: var(--text-faint);
+    padding: 60px 20px;
+    font-size: 14px;
+  }
+  @media (max-width: 640px) {
+    header, .controls, main { padding-left: 16px; padding-right: 16px; }
+    .job { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>QA job pipeline</h1>
+  <div class="build-time mono">last run 2026-07-13 20:56 UTC</div>
+</header>
+
+<div class="stats">
+  <div class="stat"><div class="value mono">74</div><div class="label">tracked</div></div>
+  <div class="stat"><div class="value mono">0</div><div class="label">screened</div></div>
+  <div class="stat qualifying"><div class="value mono">0</div><div class="label">65%+ match</div></div>
+  <div class="stat applied"><div class="value mono">0</div><div class="label">applied</div></div>
+  <div class="stat"><div class="value mono">--</div><div class="label">avg score</div></div>
+</div>
+
+<div class="controls">
+  <div class="tabs">
+    <button class="tab active" data-tab="new">New</button>
+    <button class="tab" data-tab="applied">Applied</button>
+    <button class="tab" data-tab="all">All</button>
+  </div>
+  <div class="spacer"></div>
+  <input type="search" id="search" placeholder="Search title or company">
+  <select id="sort">
+    <option value="date">Sort: newest posted</option>
+    <option value="score">Sort: highest score</option>
+    <option value="scraped">Sort: recently scraped</option>
+  </select>
+  <select id="minscore">
+    <option value="0">All scores</option>
+    <option value="65" selected>65%+ only</option>
+    <option value="85">85%+ only</option>
+  </select>
+</div>
+
+<main id="job-list"></main>
+
+<script id="jobs-data" type="application/json">[{"title": "Agentic SDET I", "company": "RBC", "location": "Toronto, Ontario, Canada", "date": "2026-07-07", "job_url": "https://www.linkedin.com/jobs/view/4437777723/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Automation Lead", "company": "Coforge", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4438340707/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Automation QE - Playwright (Banking Domain)", "company": "Apptoza Inc.", "location": "Toronto, Ontario, Canada", "date": "2026-07-11", "job_url": "https://www.linkedin.com/jobs/view/4436685362/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Automation Quality Analyst - Specialist (Wealth Management)", "company": "CGI", "location": "Toronto, Ontario, Canada", "date": "2026-07-11", "job_url": "https://www.linkedin.com/jobs/view/4388587890/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Automation Test Analyst", "company": "Cognizant", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4429627775/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Bilingual Quality Assurance Engineer", "company": "McCarthy T\u00e9trault", "location": "Toronto, Ontario, Canada", "date": "2026-07-11", "job_url": "https://www.linkedin.com/jobs/view/4431164137/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Business Analyst / Quality Assurance (BA/QA)", "company": "Dawn InfoTek", "location": "Toronto, Ontario, Canada", "date": "2026-07-08", "job_url": "https://www.linkedin.com/jobs/view/4437312058/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Lead AI Test Engineer", "company": "Jobility Talent Solutions", "location": "Toronto, Ontario, Canada", "date": "2026-07-08", "job_url": "https://www.linkedin.com/jobs/view/4437058101/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Manual QA Analyst", "company": "Dawn InfoTek", "location": "Toronto, Ontario, Canada", "date": "2026-07-08", "job_url": "https://www.linkedin.com/jobs/view/4437062857/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Mobile QA", "company": "Insight Global", "location": "North York, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4437900080/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Performance Test Engineer", "company": "SOTI", "location": "Mississauga, Ontario, Canada", "date": "2026-07-07", "job_url": "https://www.linkedin.com/jobs/view/4437881016/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Playwright Automation Engineer", "company": "Futran Solutions", "location": "Toronto, Ontario, Canada", "date": "2026-07-09", "job_url": "https://www.linkedin.com/jobs/view/4438832206/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Principal Quality Assurance Engineer", "company": "Flexiti", "location": "North York, Ontario, Canada", "date": "2026-07-11", "job_url": "https://www.linkedin.com/jobs/view/4438943648/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "QA Analyst", "company": "Financeit", "location": "Toronto, Ontario, Canada", "date": "2026-07-07", "job_url": "https://www.linkedin.com/jobs/view/4437812213/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "QA Automation Engineer", "company": "Cognizant", "location": "Toronto, Ontario, Canada", "date": "2026-07-08", "job_url": "https://www.linkedin.com/jobs/view/4436892462/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "QA Automation Engineer", "company": "Scotiabank", "location": "Toronto, Ontario, Canada", "date": "2026-07-11", "job_url": "https://www.linkedin.com/jobs/view/4410838767/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "QA Automation Engineer", "company": "Tubi", "location": "Toronto, Ontario, Canada", "date": "2026-07-09", "job_url": "https://www.linkedin.com/jobs/view/4430143498/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "QA Automation Engineer (12 Month Contract)", "company": "TC Transcontinental", "location": "Mississauga, Ontario, Canada", "date": "2026-07-09", "job_url": "https://www.linkedin.com/jobs/view/4410797577/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "QA Automation Engineer (Webdriver.io)", "company": "Infoya", "location": "Toronto, Ontario, Canada", "date": "2026-07-09", "job_url": "https://www.linkedin.com/jobs/view/4437922115/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "QA Automation Engineer - Test Data Management", "company": "Astra-North Infoteck Inc.  ~ Conquering today\u2019s challenges, achieving tomorrow\u2019s vision!", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4438325718/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "QA Automation Engineer - Webdriver.io", "company": "Infoya", "location": "Toronto, Ontario, Canada", "date": "2026-07-09", "job_url": "https://www.linkedin.com/jobs/view/4437597443/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "QA Automation Engineer with Python", "company": "Iris Software Inc.", "location": "Toronto, Ontario, Canada", "date": "2026-07-09", "job_url": "https://www.linkedin.com/jobs/view/4431510048/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "QA Automation Engineer- Global Payments Engineering", "company": "Scotiabank", "location": "Toronto, Ontario, Canada", "date": "2026-07-08", "job_url": "https://www.linkedin.com/jobs/view/4428081961/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "QA Automation Engineer\u2013 Retail Payments,POS,Cypress, Node.js, Selenium", "company": "Astra-North Infoteck Inc.  ~ Conquering today\u2019s challenges, achieving tomorrow\u2019s vision!", "location": "Mississauga, Ontario, Canada", "date": "2026-07-07", "job_url": "https://www.linkedin.com/jobs/view/4436855345/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "QA Engineer - Internship", "company": "commonsku", "location": "Toronto, Ontario, Canada", "date": "2026-07-08", "job_url": "https://www.linkedin.com/jobs/view/4437016542/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "QA Engineer- Mobile/AI Application", "company": "Charger Logistics Inc.", "location": "Brampton, Ontario, Canada", "date": "2026-07-09", "job_url": "https://www.linkedin.com/jobs/view/4438807119/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "QE Automation Engineer (Playwright)", "company": "Ardent SoftSol Inc.", "location": "Toronto, Ontario, Canada", "date": "2026-07-07", "job_url": "https://www.linkedin.com/jobs/view/4435473121/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "QE Automation Engineer with AI experience", "company": "Hexaware Technologies", "location": "Toronto, Ontario, Canada", "date": "2026-07-09", "job_url": "https://www.linkedin.com/jobs/view/4437903548/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Quality Assurance Analyst", "company": "TELUS Health", "location": "Toronto, Ontario, Canada", "date": "2026-07-09", "job_url": "https://www.linkedin.com/jobs/view/4430138037/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Quality Assurance Analyst/Software Tester", "company": "Legal Aid Ontario", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4437599237/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Quality Assurance Automation Engineer", "company": "Tata Consultancy Services", "location": "Greater Toronto Area, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4438312905/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Quality Assurance Automation Engineer", "company": "UniSysTech Consulting", "location": "Greater Toronto Area, Canada", "date": "2026-07-07", "job_url": "https://www.linkedin.com/jobs/view/4436828572/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Quality Engineer - Automation", "company": "Iris Software Inc.", "location": "Toronto, Ontario, Canada", "date": "2026-07-08", "job_url": "https://www.linkedin.com/jobs/view/4437081472/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "SAP QA Tester", "company": "Quantum World Technologies Inc.", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4439356955/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "SDET", "company": "Epsilon Solutions Ltd.", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4439321734/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Senior Automation Engineer", "company": "Tubi", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4430770265/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Senior Automation Tester - Playwright", "company": "Cognizant", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4409984409/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Senior Manual QA Engineer (iGaming)", "company": "BrightIT", "location": "Toronto, Ontario, Canada", "date": "2026-07-06", "job_url": "https://www.linkedin.com/jobs/view/4433946672/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Senior QA Analyst (IAM Testing)", "company": "Cognizant", "location": "Toronto, Ontario, Canada", "date": "2026-07-08", "job_url": "https://www.linkedin.com/jobs/view/4437302450/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Senior QA Automation Engineer", "company": "Cognizant", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4429635734/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Senior QA Automation Engineer", "company": "Tubi", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4430767262/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Senior QA Automation Engineer Python", "company": "Luxoft", "location": "Toronto, Ontario, Canada", "date": "2026-07-06", "job_url": "https://www.linkedin.com/jobs/view/4437424904/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Senior QA Automation Engineer Python + Zephyr", "company": "Luxoft", "location": "Toronto, Ontario, Canada", "date": "2026-07-06", "job_url": "https://www.linkedin.com/jobs/view/4437426715/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Senior Quality Assurance Engineer", "company": "Envision Technology Solutions", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4438371404/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Senior Quality Automation Tester", "company": "CGI", "location": "Toronto, Ontario, Canada", "date": "2026-07-11", "job_url": "https://www.linkedin.com/jobs/view/4412177450/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Senior SDET (Software Development Engineer in Test)", "company": "SpryPoint", "location": "Toronto, Ontario, Canada", "date": "2026-07-11", "job_url": "https://www.linkedin.com/jobs/view/4439399898/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Senior Software Developer in Test (SDET)", "company": "Exchange Solutions", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4436630065/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Senior Systems Testing / QA Specialist", "company": "BITS Recruiting", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4439310365/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Software Developer in Test (SDET) - Fixed Income ETrading", "company": "Citi", "location": "Mississauga, Ontario, Canada", "date": "2026-07-11", "job_url": "https://www.linkedin.com/jobs/view/4410891492/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Software Development Engineer in Test (SDET) - II", "company": "Guidepoint", "location": "Toronto, Ontario, Canada", "date": "2026-07-11", "job_url": "https://www.linkedin.com/jobs/view/4369684382/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Software Development Engineer in Test Automation Tester - Officer", "company": "Citi", "location": "Mississauga, Ontario, Canada", "date": "2026-07-08", "job_url": "https://www.linkedin.com/jobs/view/4437022587/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Systems Testing/QA Specialist - Senior 26-21035", "company": "Russell Tobin", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4439319290/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Test Automation Engineer", "company": "Accenture", "location": "Mississauga, Ontario, Canada", "date": "2026-07-09", "job_url": "https://www.linkedin.com/jobs/view/4437924467/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Test Automation Engineer", "company": "Scotiabank", "location": "Toronto, Ontario, Canada", "date": "2026-07-08", "job_url": "https://www.linkedin.com/jobs/view/4428059069/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Test Engineer", "company": "TechDoQuest", "location": "Markham, Ontario, Canada", "date": "2026-07-08", "job_url": "https://www.linkedin.com/jobs/view/4434870084/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "[Wattpad] Product Quality Assurance Specialist - Maternity Cover", "company": "Wattpad", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4436643102/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:44:19.342121", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Lead QA Automation Engineer", "company": "Infoya", "location": "Toronto, Ontario, Canada", "date": "2026-07-09", "job_url": "https://www.linkedin.com/jobs/view/4437915330/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:48:22.813682", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Quality Engineer Modern Test Automation & AI", "company": "Citi", "location": "Mississauga, Ontario, Canada", "date": "2026-07-11", "job_url": "https://www.linkedin.com/jobs/view/4438926332/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:48:22.813682", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Quality Engineer(Test Automation)", "company": "Tata Consultancy Services", "location": "Toronto, Ontario, Canada", "date": "2026-07-06", "job_url": "https://www.linkedin.com/jobs/view/4436098705/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:48:22.813682", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Senior Software Developer in Test (SDET)", "company": "Exchange Solutions", "location": "Greater Toronto Area, Canada", "date": "2026-07-07", "job_url": "https://www.linkedin.com/jobs/view/4436826287/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:48:22.813682", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Sr Advanced Test Engineer", "company": "Honeywell Aerospace", "location": "Mississauga, Ontario, Canada", "date": "2026-07-11", "job_url": "https://www.linkedin.com/jobs/view/4431159847/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:48:22.813682", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Sr QA - Playwright + Rest assured", "company": "Wipro", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4438377075/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:48:22.813682", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Test Engineer II", "company": "Honeywell Aerospace", "location": "Mississauga, Ontario, Canada", "date": "2026-07-11", "job_url": "https://www.linkedin.com/jobs/view/4431161770/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:48:22.813682", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "AI Automation Engineer \u2013 AI/ML, Test Automation, Python/Java & SAP", "company": "Astra-North Infoteck Inc.  ~ Conquering today\u2019s challenges, achieving tomorrow\u2019s vision!", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4438343379/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:49:01.823535", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "SAP Automation - AI QE- Automation, Python/Java, AI/ML, SAP", "company": "Apptoza Inc.", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4436625480/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:49:01.823535", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Automation QE- playwright", "company": "Apptoza Inc.", "location": "Toronto, Ontario, Canada", "date": "2026-07-10", "job_url": "https://www.linkedin.com/jobs/view/4436618949/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:49:31.106452", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Performance Test Engineer", "company": "TechDoQuest", "location": "Toronto, Ontario, Canada", "date": "2026-07-06", "job_url": "https://www.linkedin.com/jobs/view/4433981284/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:49:31.106452", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "Salesforce Data Migration QA Engineer (1872)", "company": "Direct IT Recruiting Inc.", "location": "Mississauga, Ontario, Canada", "date": "2026-07-08", "job_url": "https://www.linkedin.com/jobs/view/4437097020/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 17:49:31.106452", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "my_database"}, {"title": "AI-Enabled Software Test Engineer - New Grad", "company": "Ciena", "location": "Ottawa, Ontario, Canada", "date": "2026-07-09", "job_url": "https://www.linkedin.com/jobs/view/4437584000/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 18:39:11.670215", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "ottawa"}, {"title": "Automation Node Maintainer", "company": "Ford Motor Company", "location": "Ottawa, Ontario, Canada", "date": "2026-07-09", "job_url": "https://www.linkedin.com/jobs/view/4438660732/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 18:39:11.670215", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "ottawa"}, {"title": "Intermediate Analyst, IT Quality Assurance", "company": "University of Ottawa", "location": "Ottawa, Ontario, Canada", "date": "2026-07-09", "job_url": "https://www.linkedin.com/jobs/view/4438690418/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 18:39:11.670215", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "ottawa"}, {"title": "Senior Test Automation Engineer, onsite in Ottawa", "company": "Ciena", "location": "Ottawa, Ontario, Canada", "date": "2026-07-09", "job_url": "https://www.linkedin.com/jobs/view/4437924464/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 18:39:11.670215", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "ottawa"}, {"title": "Software Development Engineer in Test (SDET)", "company": "Ouster", "location": "Greater Ottawa Metropolitan Area", "date": "2026-07-07", "job_url": "https://www.linkedin.com/jobs/view/4436869046/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 18:39:11.670215", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "ottawa"}, {"title": "System Test QA Engineer", "company": "Nokia", "location": "Kanata, Ontario, Canada", "date": "2026-07-07", "job_url": "https://www.linkedin.com/jobs/view/4437727106/", "applied": 0, "interview": 0, "rejected": 0, "date_loaded": "2026-07-12 18:39:11.670215", "ai_score": null, "ai_matched_signals": [], "ai_gaps": [], "ai_reasoning": null, "ai_screened": null, "source": "ottawa"}]</script>
+<script>
+const jobs = JSON.parse(document.getElementById('jobs-data').textContent);
+let activeTab = 'new';
+
+function scoreClass(score) {
+  if (score === null || score === undefined) return 'unscored';
+  if (score >= 85) return 'pass';
+  if (score >= 65) return 'warn';
+  return 'fail';
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s || '';
+  return d.innerHTML;
+}
+
+function render() {
+  const search = document.getElementById('search').value.toLowerCase();
+  const sortBy = document.getElementById('sort').value;
+  const minScore = parseInt(document.getElementById('minscore').value, 10);
+
+  let filtered = jobs.filter(j => {
+    if (activeTab === 'new' && j.applied) return false;
+    if (activeTab === 'applied' && !j.applied) return false;
+    if ((j.ai_score || 0) < minScore && !j.applied) return false;
+    if (search && !((j.title || '').toLowerCase().includes(search) || (j.company || '').toLowerCase().includes(search))) return false;
+    return true;
+  });
+
+  filtered.sort((a, b) => {
+    if (sortBy === 'score') return (b.ai_score || 0) - (a.ai_score || 0);
+    if (sortBy === 'scraped') return (b.date_loaded || '').localeCompare(a.date_loaded || '');
+    return (b.date || '').localeCompare(a.date || '');
+  });
+
+  const list = document.getElementById('job-list');
+  if (filtered.length === 0) {
+    list.innerHTML = '<div class="empty">Nothing here yet. Check back after the next scheduled run.</div>';
+    return;
+  }
+
+  list.innerHTML = filtered.map(j => {
+    const cls = scoreClass(j.ai_score);
+    const scoreLabel = (j.ai_score === null || j.ai_score === undefined) ? '--' : j.ai_score + '%';
+    const matched = (j.ai_matched_signals || []).map(s => `<span class="check matched">${escapeHtml(s)}</span>`).join('');
+    const gaps = (j.ai_gaps || []).map(s => `<span class="check gap">${escapeHtml(s)}</span>`).join('');
+    const appliedPill = j.applied ? '<div class="applied-pill">APPLIED</div>' : '';
+    return `
+      <div class="job">
+        <div class="badge ${cls}">${scoreLabel}</div>
+        <div class="job-body">
+          <div class="job-title-row">
+            <div class="job-title"><a href="${j.job_url}" target="_blank" rel="noopener">${escapeHtml(j.title)}</a></div>
+            ${appliedPill}
+          </div>
+          <div class="job-meta">${escapeHtml(j.company)} &middot; ${escapeHtml(j.location)} &middot; posted ${escapeHtml(j.date || 'unknown')} &middot; <span class="source">${escapeHtml(j.source)}</span></div>
+          ${(matched || gaps) ? `<div class="checks">${matched}${gaps}</div>` : ''}
+          ${j.ai_reasoning ? `<div class="reasoning">${escapeHtml(j.ai_reasoning)}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    activeTab = tab.dataset.tab;
+    render();
+  });
+});
+document.getElementById('search').addEventListener('input', render);
+document.getElementById('sort').addEventListener('change', render);
+document.getElementById('minscore').addEventListener('change', render);
+
+render();
+</script>
+</body>
+</html>

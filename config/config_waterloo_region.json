@@ -1,0 +1,80 @@
+{
+  "proxies": {},
+  "headers": {
+    "User-Agent": "paste your browser user agent here"
+  },
+  "OpenAI_API_KEY": "",
+  "OpenAI_Model": "",
+  "resume_path": "/full/path/to/your/resume.pdf",
+  "search_queries": [
+    {
+      "keywords": "QA Automation Engineer",
+      "location": "Kitchener, Ontario, Canada",
+      "f_WT": ""
+    },
+    {
+      "keywords": "SDET",
+      "location": "Waterloo, Ontario, Canada",
+      "f_WT": ""
+    },
+    {
+      "keywords": "Test Automation Engineer",
+      "location": "Cambridge, Ontario, Canada",
+      "f_WT": ""
+    },
+    {
+      "keywords": "Software Test Engineer",
+      "location": "Guelph, Ontario, Canada",
+      "f_WT": ""
+    }
+  ],
+  "desc_words": [
+    "manual only",
+    "clinical",
+    "pharmaceutical",
+    "manufacturing",
+    "embedded",
+    "electrical",
+    "game"
+  ],
+  "title_exclude": [
+    "manager",
+    "director",
+    "frontend",
+    "technician",
+    "clinical"
+  ],
+  "title_include": [
+    "qa",
+    "quality assurance",
+    "automation",
+    "selenium",
+    "playwright",
+    "sdet",
+    "test engineer",
+    "qa engineer",
+    "software test engineer",
+    "tester",
+    "test analyst",
+    "qc engineer",
+    "test specialist",
+    "quality",
+    "qc",
+    "test coordinator",
+    "test lead"
+  ],
+  "company_exclude": [
+    "ClickJobs.io"
+  ],
+  "languages": [
+    "en"
+  ],
+  "timespan": "r604800",
+  "jobs_tablename": "jobs",
+  "filtered_jobs_tablename": "filtered_jobs",
+  "db_path": "./data/waterloo_region.db",
+  "pages_to_scrape": 4,
+  "rounds": 1,
+  "days_to_scrape": 7,
+  "app_table": "jobs"
+}

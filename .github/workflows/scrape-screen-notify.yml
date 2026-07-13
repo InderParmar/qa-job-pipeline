@@ -1,0 +1,50 @@
+name: Scrape, Screen & Notify
+
+on:
+  schedule:
+    # Every 4 hours. GitHub's scheduler runs in UTC and can be delayed a few minutes
+    # during high load -- treat this as "roughly every 4 hours", not exact.
+    - cron: '0 */4 * * *'
+  workflow_dispatch: {}  # lets you trigger a run manually from the Actions tab
+
+permissions:
+  contents: write  # needed so the workflow can commit updated .db files back to the repo
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run scrape -> screen -> notify pipeline
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          OPENAI_MODEL: ${{ secrets.OPENAI_MODEL }}
+          SUITABILITY_THRESHOLD: ${{ secrets.SUITABILITY_THRESHOLD }}
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          NOTIFY_EMAIL_TO: ${{ secrets.NOTIFY_EMAIL_TO }}
+          PIPELINE_CONFIG_PAUSE: '20'
+        run: python pipeline.py
+
+      - name: Generate static dashboard for GitHub Pages
+        run: python generate_dashboard.py --data-dir data --out docs/index.html
+
+      - name: Commit updated job databases and dashboard
+        run: |
+          git config user.name "job-scraper-bot"
+          git config user.email "actions@github.com"
+          git add data/*.db docs/index.html
+          git diff --cached --quiet || git commit -m "Automated scrape run [skip ci]"
+          git push
