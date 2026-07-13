@@ -73,7 +73,18 @@ def load_all_jobs(data_dir):
             print(f"Skipping {db_path}: {e}")
         finally:
             conn.close()
-    return jobs
+
+    # The same posting frequently gets scraped into more than one region's database (a
+    # city-specific config and the national/province-wide catch-all configs both catch it).
+    # Dedupe by job_url so it shows up once on the dashboard, not once per database it
+    # landed in. Prefer whichever copy is marked applied, so status is never lost to
+    # whichever copy happened to load first.
+    by_url = {}
+    for job in jobs:
+        url = job.get('job_url')
+        if url not in by_url or (job.get('applied') and not by_url[url].get('applied')):
+            by_url[url] = job
+    return list(by_url.values())
 
 
 def build_stats(jobs):
@@ -428,3 +439,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+    

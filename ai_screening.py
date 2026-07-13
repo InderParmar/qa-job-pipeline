@@ -193,12 +193,47 @@ def ensure_ai_columns(conn):
     conn.commit()
 
 
-def screen_database(db_path, client, model, profile, threshold=SUITABILITY_THRESHOLD):
+def _cache_path(data_dir):
+    return os.path.join(data_dir, '_screening_cache.json')
+
+
+def load_screening_cache(data_dir):
+    path = _cache_path(data_dir)
+    if os.path.exists(path):
+        try:
+            with open(path) as f:
+                return json.load(f)
+        except (json.JSONDecodeError, OSError):
+            return {}
+    return {}
+
+
+def save_screening_cache(data_dir, cache):
+    with open(_cache_path(data_dir), 'w') as f:
+        json.dump(cache, f, indent=2)
+
+
+def screen_database(db_path, client, model, profile, threshold=SUITABILITY_THRESHOLD,
+                     cache=None, seen_this_run=None):
     """Screens every un-screened, non-hidden job in one .db file.
     Returns the list of jobs that newly qualify (score >= threshold) so the caller can
     notify on them. Each dict includes db_path + row id so a notifier can build a stable
     reference even though sqlite ids aren't unique across separate database files.
+
+    `cache` (job_url -> screening result dict) is shared across every db file in a run --
+    the same posting frequently gets scraped into more than one region's database (e.g. a
+    Toronto job matching both a city-specific config and the national/province-wide catch-
+    all configs). Without this, that one posting gets sent to the LLM once per database it
+    landed in -- paying for the same call multiple times and risking duplicate entries in
+    a single notification email. `seen_this_run` (a set of job_urls) additionally prevents
+    the same posting from being queued for notification twice within one pipeline run, even
+    though it still gets a correctly-populated score written into every db row it appears in.
     """
+    if cache is None:
+        cache = {}
+    if seen_this_run is None:
+        seen_this_run = set()
+
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
     cursor.execute("PRAGMA table_info(jobs)")
@@ -228,12 +263,17 @@ def screen_database(db_path, client, model, profile, threshold=SUITABILITY_THRES
     newly_qualifying = []
     print(f"{db_path}: {len(rows)} job(s) to screen")
     for row_id, title, company, location, job_url, job_description, posted_date in rows:
-        print(f"  screening: {title} @ {company}")
-        result = screen_job(client, model, profile, title, company, location, job_description)
-        if result is None:
-            # Leave ai_screened at 0 so a future run retries it, rather than silently
-            # marking a failed call as "screened" and losing the job forever.
-            continue
+        if job_url in cache:
+            print(f"  reusing cached score for: {title} @ {company} (already screened via another db)")
+            result = cache[job_url]
+        else:
+            print(f"  screening: {title} @ {company}")
+            result = screen_job(client, model, profile, title, company, location, job_description)
+            if result is None:
+                # Leave ai_screened at 0 so a future run retries it, rather than silently
+                # marking a failed call as "screened" and losing the job forever.
+                continue
+            cache[job_url] = result
 
         cursor.execute(
             "UPDATE jobs SET ai_score = ?, ai_matched_signals = ?, ai_gaps = ?, "
@@ -248,7 +288,8 @@ def screen_database(db_path, client, model, profile, threshold=SUITABILITY_THRES
         )
         conn.commit()
 
-        if result['suitability_score'] >= threshold:
+        if result['suitability_score'] >= threshold and job_url not in seen_this_run:
+            seen_this_run.add(job_url)
             newly_qualifying.append({
                 'db_path': db_path,
                 'row_id': row_id,
@@ -271,14 +312,19 @@ def screen_all_databases(data_dir='data', threshold=SUITABILITY_THRESHOLD):
     client = _client()
     model = _model()
     profile = load_profile()
+    cache = load_screening_cache(data_dir)
+    seen_this_run = set()
 
     all_qualifying = []
     for db_path in sorted(glob.glob(os.path.join(data_dir, '*.db'))):
         try:
-            qualifying = screen_database(db_path, client, model, profile, threshold)
+            qualifying = screen_database(db_path, client, model, profile, threshold,
+                                          cache=cache, seen_this_run=seen_this_run)
             all_qualifying.extend(qualifying)
         except Exception as e:
             print(f"ERROR screening {db_path}: {e}")
+
+    save_screening_cache(data_dir, cache)
     return all_qualifying
 
 
