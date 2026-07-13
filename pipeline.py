@@ -28,7 +28,7 @@ def run_pipeline():
     start = time.perf_counter()
 
     print(f"\n{'#'*60}\nSTEP 1/3: Scraping all configs\n{'#'*60}")
-    pause = float(os.environ.get('PIPELINE_CONFIG_PAUSE', '20'))
+    pause = float(os.environ.get('PIPELINE_CONFIG_PAUSE') or '20')
     scrape_results = run_all_configs.run_all(config_dir='config', pause=pause, include_root_config=True)
 
     print(f"\n{'#'*60}\nSTEP 2/3: AI-screening new jobs for suitability\n{'#'*60}")
@@ -52,3 +52,4 @@ def run_pipeline():
 
 if __name__ == "__main__":
     run_pipeline()
+    

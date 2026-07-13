@@ -25,11 +25,11 @@ def _smtp_config():
     if not user or not password:
         raise RuntimeError("SMTP_USER and SMTP_PASS must be set to send notification emails.")
     return {
-        'host': os.environ.get('SMTP_HOST', 'smtp.gmail.com'),
-        'port': int(os.environ.get('SMTP_PORT', '587')),
+        'host': os.environ.get('SMTP_HOST') or 'smtp.gmail.com',
+        'port': int(os.environ.get('SMTP_PORT') or '587'),
         'user': user,
         'password': password,
-        'to': os.environ.get('NOTIFY_EMAIL_TO', user),
+        'to': os.environ.get('NOTIFY_EMAIL_TO') or user,
     }
 
 
@@ -104,3 +104,4 @@ def _mark_notified(qualifying_jobs):
         cursor.executemany("UPDATE jobs SET notified = 1 WHERE id = ?", [(rid,) for rid in row_ids])
         conn.commit()
         conn.close()
+        

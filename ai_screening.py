@@ -89,7 +89,7 @@ def load_profile():
     return DEFAULT_PROFILE
 
 
-SUITABILITY_THRESHOLD = int(os.environ.get('SUITABILITY_THRESHOLD', '65'))
+SUITABILITY_THRESHOLD = int(os.environ.get('SUITABILITY_THRESHOLD') or '65')
 
 SYSTEM_PROMPT = """You are screening job postings for a specific candidate against their profile.
 Score how suitable each posting is for this exact candidate, honestly -- do not be generous.
@@ -122,7 +122,7 @@ def _client():
 
 
 def _model():
-    return os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
+    return os.environ.get('OPENAI_MODEL') or 'gpt-4o-mini'
 
 
 def screen_job(client, model, profile, title, company, location, job_description, retries=2):
@@ -285,3 +285,4 @@ if __name__ == "__main__":
     print(f"\n{len(qualifying)} job(s) newly qualify at {args.threshold}%+:")
     for job in qualifying:
         print(f"  [{job['score']}%] {job['title']} @ {job['company']} ({job['db_path']})")
+        
