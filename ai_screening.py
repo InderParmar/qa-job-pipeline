@@ -200,6 +200,22 @@ def screen_database(db_path, client, model, profile, threshold=SUITABILITY_THRES
     reference even though sqlite ids aren't unique across separate database files.
     """
     conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    cursor.execute("PRAGMA table_info(jobs)")
+    existing_columns = {c[1] for c in cursor.fetchall()}
+
+    required_columns = {'id', 'title', 'company', 'location', 'job_url', 'job_description', 'date', 'hidden'}
+    missing = required_columns - existing_columns
+    if missing:
+        # Either the jobs table doesn't exist yet (a config that hasn't found its first
+        # matching posting yet -- harmless, resolves itself once it does), or a past run
+        # created it from an empty DataFrame with the wrong columns (the schema-corruption
+        # bug this now guards against upstream in main.py). Either way, don't crash --
+        # just skip this db until it has a properly-shaped jobs table to screen.
+        print(f"{db_path}: skipping (jobs table missing or missing columns: {missing})")
+        conn.close()
+        return []
+
     ensure_ai_columns(conn)
     cursor = conn.cursor()
 

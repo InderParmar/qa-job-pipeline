@@ -352,17 +352,27 @@ def main(config_file):
         df_filtered['date_loaded'] = df_filtered['date_loaded'].astype(str)        
         
         if conn is not None:
-            #Update or Create the database table for the job list
-            if table_exists(conn, jobs_tablename):
-                update_table(conn, df, jobs_tablename)
+            #Update or Create the database table for the job list.
+            #Skip entirely if there's nothing to add -- pd.DataFrame([]) on an empty list
+            #produces a DataFrame with ZERO COLUMNS (not just zero rows), so calling
+            #create_table() on it would build a "jobs" table missing title/company/etc,
+            #silently corrupting the schema for every future run against this db.
+            if not df.empty:
+                if table_exists(conn, jobs_tablename):
+                    update_table(conn, df, jobs_tablename)
+                else:
+                    create_table(conn, df, jobs_tablename)
             else:
-                create_table(conn, df, jobs_tablename)
-                
+                print(f"No rows to add to {jobs_tablename} this run -- skipping table create/update.")
+
             #Update or Create the database table for the filtered out jobs
-            if table_exists(conn, filtered_jobs_tablename):
-                update_table(conn, df_filtered, filtered_jobs_tablename)
+            if not df_filtered.empty:
+                if table_exists(conn, filtered_jobs_tablename):
+                    update_table(conn, df_filtered, filtered_jobs_tablename)
+                else:
+                    create_table(conn, df_filtered, filtered_jobs_tablename)
             else:
-                create_table(conn, df_filtered, filtered_jobs_tablename)
+                print(f"No rows to add to {filtered_jobs_tablename} this run -- skipping table create/update.")
         else:
             print("Error! cannot create the database connection.")
         
@@ -381,3 +391,4 @@ if __name__ == "__main__":
         config_file = sys.argv[1]
         
     main(config_file)
+    
