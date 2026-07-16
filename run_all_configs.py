@@ -31,6 +31,7 @@ import json
 import os
 import sys
 import time
+import traceback
 
 # main.py must be importable from the same directory this script lives in.
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -95,8 +96,9 @@ def run_all(config_dir='config', pause=45, include_root_config=True):
             run_scraper(path)
             results.append((path, "success", None))
         except Exception as e:
-            print(f"ERROR while running {path}: {e}")
-            results.append((path, "failed", str(e)))
+            tb = traceback.format_exc()
+            print(f"ERROR while running {path}: {e}\n{tb}")
+            results.append((path, "failed", f"{e} -- see traceback above in the run log"))
 
         is_last = (i == len(config_files) - 1)
         if not is_last and pause > 0:
@@ -130,3 +132,4 @@ def main_runner():
 
 if __name__ == "__main__":
     main_runner()
+    

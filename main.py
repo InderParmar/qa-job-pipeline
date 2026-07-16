@@ -175,9 +175,13 @@ def create_table(conn, df, table_name):
     'string': 'TEXT'
     }
     
-    # Prepare a string with column names and their types
+    # Prepare a string with column names and their types. Falls back to TEXT for any
+    # pandas dtype not explicitly listed above (e.g. int32 vs int64, or a
+    # datetime64[ns, UTC]-with-timezone variant) instead of a hard KeyError -- this was a
+    # real latent crash risk: a single column with an unexpected dtype would take down the
+    # entire config's run.
     columns_with_types = ', '.join(
-        f'"{column}" {type_mapping[str(df.dtypes[column])]}'
+        f'"{column}" {type_mapping.get(str(df.dtypes[column]), "TEXT")}'
         for column in df.columns
     )
     

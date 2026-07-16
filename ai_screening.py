@@ -64,6 +64,14 @@ HONEST SKILL LEVEL
 JOB TARGETING
 Looking for: Junior or Intermediate QA Automation Engineer / SDET roles, 0-3 years experience.
 Type: full-time preferred, open to contract. Canadian work authorization, no sponsorship needed.
+Already graduated (December 2025) -- NOT a current student.
+
+Internships/co-ops: open to these ONLY if the posting is explicitly open to recent graduates,
+new grads, or does not require current student/enrollment status. An internship or co-op
+posting that explicitly requires the candidate to be a "current student," "currently enrolled,"
+"returning to studies after the work term," or similar, is NOT a fit -- the candidate cannot
+qualify for it regardless of skills match, and it should score very low (below 20), not be
+scored on technical fit at all.
 
 Best-fit signals in a job posting:
 - Selenium OR Playwright explicitly listed
@@ -78,6 +86,7 @@ Disqualifying signals:
 - Robot Framework required
 - Mobile-only automation (Appium) as the core focus
 - Location outside Canada and not fully remote
+- Internship/co-op that explicitly requires current student/enrollment status
 """.strip()
 
 
@@ -213,6 +222,17 @@ def save_screening_cache(data_dir, cache):
         json.dump(cache, f, indent=2)
 
 
+def mark_notified_in_cache(data_dir, job_urls):
+    """Called after notify.py successfully sends an email -- records that these job_urls
+    have now been notified about, globally, so no future run re-notifies on them even if
+    the same posting exists as an unrelated row in a different database file.
+    """
+    cache = load_screening_cache(data_dir)
+    for url in job_urls:
+        cache.setdefault(url, {})['notified'] = True
+    save_screening_cache(data_dir, cache)
+
+
 def screen_database(db_path, client, model, profile, threshold=SUITABILITY_THRESHOLD,
                      cache=None, seen_this_run=None):
     """Screens every un-screened, non-hidden job in one .db file.
@@ -288,7 +308,8 @@ def screen_database(db_path, client, model, profile, threshold=SUITABILITY_THRES
         )
         conn.commit()
 
-        if result['suitability_score'] >= threshold and job_url not in seen_this_run:
+        if result['suitability_score'] >= threshold and job_url not in seen_this_run \
+                and not cache.get(job_url, {}).get('notified'):
             seen_this_run.add(job_url)
             newly_qualifying.append({
                 'db_path': db_path,

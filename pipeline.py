@@ -40,7 +40,9 @@ def run_pipeline():
 
     print(f"\n{'#'*60}\nSTEP 3/3: Notifying about {len(qualifying_jobs)} qualifying job(s)\n{'#'*60}")
     try:
-        notify.send_qualifying_jobs_email(qualifying_jobs)
+        sent = notify.send_qualifying_jobs_email(qualifying_jobs)
+        if sent:
+            ai_screening.mark_notified_in_cache('data', [j['job_url'] for j in qualifying_jobs])
     except Exception as e:
         print(f"ERROR sending notification email: {e}")
 
